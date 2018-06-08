@@ -3,6 +3,7 @@
 #include <cfloat>
 #include <limits>
 #include <iomanip>
+#include <iostream>
 
 #include <boost/format.hpp>
 
@@ -221,6 +222,7 @@ namespace MWMechanics
         if (effects)
             magicEffects = effects;
 
+        float resisted = 0;
         // Effects with no resistance attribute belonging to them can not be resisted
         if (ESM::MagicEffect::getResistanceEffect(effectId) == -1)
             return 0.f;
@@ -255,7 +257,10 @@ namespace MWMechanics
         }
 
         x = std::min(x + resistance, 100.f);
-        return x;
+
+        resisted = x;
+
+        return resisted;
     }
 
     float getEffectMultiplier(short effectId, const MWWorld::Ptr& actor, const MWWorld::Ptr& caster,
@@ -358,7 +363,10 @@ namespace MWMechanics
         }
         if (!found)
             return;
-
+					//std::string out = "Spell ID: " + x + "\n";
+       // std::cout << out;
+		//			out = "Spell ID: " + x + "\n";
+        //std::cout << out;
         const ESM::Spell* spell = MWBase::Environment::get().getWorld()->getStore().get<ESM::Spell>().search (mId);
         if (spell && !target.isEmpty() && (spell->mData.mType == ESM::Spell::ST_Disease || spell->mData.mType == ESM::Spell::ST_Blight))
         {
@@ -376,6 +384,7 @@ namespace MWMechanics
             }
         }
 
+		std::string myspellname = mId;
         ESM::EffectList reflectedEffects;
         std::vector<ActiveSpells::ActiveEffect> appliedLastingEffects;
 
@@ -452,11 +461,10 @@ namespace MWMechanics
 
             float magnitudeMult = 1;
 
-            if (!absorbed && target.getClass().isActor())
+            if (!absorbed)
             {
-                bool isHarmful = magicEffect->mData.mFlags & ESM::MagicEffect::Harmful;
                 // Reflect harmful effects
-                if (isHarmful && !reflected && !caster.isEmpty() && caster != target && !(magicEffect->mData.mFlags & ESM::MagicEffect::Unreflectable))
+                if (magicEffect->mData.mFlags & ESM::MagicEffect::Harmful && !reflected && !caster.isEmpty() && caster != target && !(magicEffect->mData.mFlags & ESM::MagicEffect::Unreflectable))
                 {
                     float reflect = target.getClass().getCreatureStats(target).getMagicEffects().get(ESM::MagicEffect::Reflect).getMagnitude();
                     bool isReflected = (Misc::Rng::roll0to99() < reflect);
@@ -480,17 +488,17 @@ namespace MWMechanics
                     else if (castByPlayer)
                         MWBase::Environment::get().getWindowManager()->messageBox("#{sMagicTargetResisted}");
                 }
-                else if (isHarmful && castByPlayer && target != caster)
+                else if (magicEffect->mData.mFlags & ESM::MagicEffect::Harmful && castByPlayer && target != caster)
                 {
                     // If player is attempting to cast a harmful spell and it wasn't fully resisted, show the target's HP bar
                     MWBase::Environment::get().getWindowManager()->setEnemy(target);
                 }
 
-                if (target == getPlayer() && MWBase::Environment::get().getWorld()->getGodModeState() && isHarmful)
+                if (target == getPlayer() && MWBase::Environment::get().getWorld()->getGodModeState())
                     magnitudeMult = 0;
 
                 // Notify the target actor they've been hit
-                if (target != caster && !caster.isEmpty() && isHarmful)
+                if (target != caster && !caster.isEmpty() && magicEffect->mData.mFlags & ESM::MagicEffect::Harmful)
                     target.getClass().onHit(target, 0.0f, true, MWWorld::Ptr(), caster, osg::Vec3f(), true);
             }
 
@@ -503,7 +511,7 @@ namespace MWMechanics
                 if (!target.getClass().isActor())
                 {
                     // non-actor objects have no list of active magic effects, so have to apply instantly
-                    if (!applyInstantEffect(target, caster, EffectKey(*effectIt), magnitude))
+                    if (!applyInstantEffect(target, caster, EffectKey(*effectIt), magnitude,myspellname))
                         continue;
                 }
                 else // target.getClass().isActor() == true
@@ -635,7 +643,7 @@ namespace MWMechanics
         }
     }
 
-    bool CastSpell::applyInstantEffect(const MWWorld::Ptr &target, const MWWorld::Ptr &caster, const MWMechanics::EffectKey& effect, float magnitude)
+    bool CastSpell::applyInstantEffect(const MWWorld::Ptr &target, const MWWorld::Ptr &caster, const MWMechanics::EffectKey& effect, float magnitude, std::string spellname = "")
     {
         short effectId = effect.mId;
         if (target.getClass().canLock(target))
@@ -699,6 +707,14 @@ namespace MWMechanics
             }
             else if (effectId == ESM::MagicEffect::AlmsiviIntervention)
             {
+			//	std::string x = spellname;
+					std::string out = "Spell ID: " + spellname + "\n";
+        std::cout << out;
+				if( spellname != "aaa_testspell")
+				{
+					//out = "Effect ID: " + effectId + "\n";
+     //   std::cout <<  "Effect ID: " + effectId + "\n";
+         //   throw std::runtime_error("Spell ID: " + x);
                 MWBase::Environment::get().getWorld()->teleportToClosestMarker(target, "templemarker");
                 anim->removeEffect(ESM::MagicEffect::AlmsiviIntervention);
                 const ESM::Static* fx = MWBase::Environment::get().getWorld()->getStore().get<ESM::Static>()
@@ -706,6 +722,8 @@ namespace MWMechanics
                 if (fx)
                     anim->addEffect("meshes\\" + fx->mModel, -1);
                 return true;
+			}
+			return true;
             }
             else if (effectId == ESM::MagicEffect::Mark)
             {
