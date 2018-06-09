@@ -25,6 +25,7 @@ MWMechanics::NpcStats::NpcStats()
 , mLevelProgress(0)
 , mTimeToStartDrowning(-1.0) // set breath to special value, it will be replaced during actor update
     , mIsWerewolf(false)
+    , 
 {
     mSkillIncreases.resize (ESM::Attribute::Length, 0);
     mSpecIncreases.resize(3, 0);
