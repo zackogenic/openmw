@@ -19,6 +19,7 @@
 #include "../mwworld/manualref.hpp"
 #include "../mwworld/player.hpp"
 #include "../mwworld/esmstore.hpp"
+#include "../mwbase/mechanicsmanager.hpp"
 
 #include "../mwmechanics/actorutil.hpp"
 
@@ -300,7 +301,9 @@ namespace MWScript
                     runtime.pop();
                     std::string cellID = runtime.getStringLiteral (runtime[0].mInteger);
                     runtime.pop();
-
+                    float xf = x;
+                    float yf = y;
+                    float zf = z;
                     MWWorld::CellStore* store = 0;
                     try
                     {
@@ -322,13 +325,18 @@ namespace MWScript
                     }
                     if(store)
                     {
+                         std::set<MWWorld::Ptr> followers;
+                         MWBase::Environment::get().getMechanicsManager()->getActorsFollowing(MWMechanics::getPlayer(), followers);
+                        
+            for (std::set<MWWorld::Ptr>::iterator it = followers.begin(); it != followers.end(); ++it)
+                    MWWorld::Ptr ptr =  MWBase::Environment::get().getWorld()->moveObject(*it,MWBase::Environment::get().getWorld()->getInterior(cellID),xf,yf,zf);
                         MWWorld::Ptr base = ptr;
                         ptr = MWBase::Environment::get().getWorld()->moveObject(ptr,store,x,y,z);
                         dynamic_cast<MWScript::InterpreterContext&>(runtime.getContext()).updatePtr(base,ptr);
 
                         float ax = ptr.getRefData().getPosition().rot[0];
                         float ay = ptr.getRefData().getPosition().rot[1];
-                        // Note that you must specify ZRot in minutes (1 degree = 60 minutes; north = 0, east = 5400, south = 10800, west = 16200)
+// Note that you must specify ZRot in minutes (1 degree = 60 minutes; north = 0, east = 5400, south = 10800, west = 16200)
                         // except for when you position the player, then degrees must be used.
                         // See "Morrowind Scripting for Dummies (9th Edition)" pages 50 and 54 for reference.
                         if(ptr != MWMechanics::getPlayer())
